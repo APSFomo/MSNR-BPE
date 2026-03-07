@@ -33,7 +33,7 @@
 input group "=== ZigZag ==="
 input int   InpZZPeriod     = 10;
 input int   InpLookback     = 500;
-input int   InpBoxExtend    = 50;
+input int   InpBoxBuffer    = 3;        // Extra bars after first touch
 
 input group "=== Level Lines ==="
 input color InpAColor       = clrDodgerBlue;
@@ -206,7 +206,7 @@ int OnCalculate(const int rates_total,
          }
          if(obBar >= 0 && !AlreadyDrawn(drawnBars, drawnN, obBar)) {
             datetime t0 = R[obBar].time;
-            datetime t1 = t0 + (datetime)(barSecs * InpBoxExtend);
+            datetime t1 = ZoneEnd(R, count, i, R[obBar].high, R[obBar].low, true, barSecs);
             DrawBox(t0, t1, R[obBar].high, R[obBar].low, true);
             drawnBars[drawnN++] = obBar;
          }
@@ -240,7 +240,7 @@ int OnCalculate(const int rates_total,
          }
          if(obBar >= 0 && !AlreadyDrawn(drawnBars, drawnN, obBar)) {
             datetime t0 = R[obBar].time;
-            datetime t1 = t0 + (datetime)(barSecs * InpBoxExtend);
+            datetime t1 = ZoneEnd(R, count, i, R[obBar].high, R[obBar].low, false, barSecs);
             DrawBox(t0, t1, R[obBar].high, R[obBar].low, false);
             drawnBars[drawnN++] = obBar;
          }
@@ -259,6 +259,28 @@ int OnCalculate(const int rates_total,
    }
 
    return rates_total;
+}
+
+//=============================================================================
+//  ZONE END — finds where price first touches the zone after it forms,
+//  then adds InpBoxBuffer extra candles so the touch candle sits inside the box.
+//  If price never returns, extends to the last loaded bar.
+//=============================================================================
+datetime ZoneEnd(const MqlRates &R[], int count, int bosBar,
+                 double zHigh, double zLow, bool isSell, int barSecs) {
+   // Start scanning AFTER the BOS confirmation bar — not from the origin candle.
+   // The breakout bars between origin and BOS would falsely trigger a touch
+   // if we started from the origin. We want the RETURN to the zone.
+   for(int k = bosBar + 1; k < count; k++) {
+      // SELL zone: price returns upward and touches zone low from below
+      // BUY  zone: price returns downward and touches zone high from above
+      if( isSell && R[k].high >= zLow)
+         return R[k].time + (datetime)(barSecs * InpBoxBuffer);
+      if(!isSell && R[k].low  <= zHigh)
+         return R[k].time + (datetime)(barSecs * InpBoxBuffer);
+   }
+   // Price has not yet returned — extend to current bar + buffer
+   return R[count-1].time + (datetime)(barSecs * InpBoxBuffer);
 }
 
 //=============================================================================
