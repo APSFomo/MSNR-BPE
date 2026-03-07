@@ -1,28 +1,28 @@
 //+------------------------------------------------------------------+
 //|                                          MSNR_Levels.mq5         |
-//|              SMC-Style Double BOS Zone Detector                  |
+//|              SMC-Style Double BO Zone Detector                  |
 //|                                                                   |
 //|  Detection order mirrors SMC order block logic:                  |
 //|                                                                   |
 //|  SELL zone:                                                       |
 //|    1. Scan forward. Track fresh V levels (swing lows).           |
-//|    2. When a bar's LOW breaks a fresh V level → BOS 1 down       |
-//|    3. When another fresh V level is broken    → BOS 2 down       |
-//|    4. Look BACK from BOS 1 bar to find the last A level pivot    |
+//|    2. When a bar's LOW breaks a fresh V level → BO 1 down       |
+//|    3. When another fresh V level is broken    → BO 2 down       |
+//|    4. Look BACK from BO 1 bar to find the last A level pivot    |
 //|       before the move started = the order block candle           |
 //|    5. Draw SELL zone at that A level candle                      |
 //|                                                                   |
 //|  BUY zone:                                                        |
 //|    1. Scan forward. Track fresh A levels (swing highs).          |
-//|    2. When a bar's HIGH breaks a fresh A level → BOS 1 up        |
-//|    3. When another fresh A level is broken    → BOS 2 up         |
-//|    4. Look BACK from BOS 1 bar to find the last V level pivot    |
+//|    2. When a bar's HIGH breaks a fresh A level → BO 1 up        |
+//|    3. When another fresh A level is broken    → BO 2 up         |
+//|    4. Look BACK from BO 1 bar to find the last V level pivot    |
 //|       before the move started = the order block candle           |
 //|    5. Draw BUY zone at that V level candle                       |
 //|                                                                   |
 //|  Break = wick OR close crossing the level (both valid).          |
 //|  A level is fresh if no bar between it and now touched it.       |
-//|  Zone only drawn AFTER double BOS confirmed — never before.      |
+//|  Zone only drawn AFTER double BO confirmed — never before.      |
 //+------------------------------------------------------------------+
 #property copyright   "MSNR Trading System"
 #property version     "4.00"
@@ -140,16 +140,16 @@ int OnCalculate(const int rates_total,
    }
 
    //--------------------------------------------------------------------------
-   //  MODULE 2 — SMC-style double BOS zone detection
+   //  MODULE 2 — SMC-style double BO zone detection
    //
    //  Scan forward bar by bar (oldest to newest = increasing index).
    //  Maintain a live list of fresh levels of each type.
    //  A level stays fresh until a bar's wick or close touches it.
    //
    //  When a bar breaks a fresh level:
-   //    → mark that level as broken (BOS event)
-   //    → if this is the 2nd break of same type → double BOS confirmed
-   //    → look BACK from the first BOS bar to find the last opposing pivot
+   //    → mark that level as broken (BO event)
+   //    → if this is the 2nd break of same type → double BO confirmed
+   //    → look BACK from the first BO bar to find the last opposing pivot
    //    → that opposing pivot is the order block = zone location
    //
    //  SELL: track fresh V levels. Two broken downward → look back for last A pivot
@@ -178,7 +178,7 @@ int OnCalculate(const int rates_total,
          freshVN++;
       }
 
-      // --- Check this bar for BOS events ---
+      // --- Check this bar for BO events ---
       // Collect which fresh levels this bar breaks (wick or close)
       // SELL: bar low breaks fresh V levels downward
       // BUY:  bar high breaks fresh A levels upward
@@ -196,9 +196,9 @@ int OnCalculate(const int rates_total,
       }
 
       if(bosVN >= 2) {
-         // Double BOS down confirmed on bar i
-         // Find the first BOS bar — the bar that broke the first (most recent) V level
-         // Both broken by the same bar here, so first BOS bar = i
+         // Double BO down confirmed on bar i
+         // Find the first BO bar — the bar that broke the first (most recent) V level
+         // Both broken by the same bar here, so first BO bar = i
          // Look BACK from bar i for the last A level pivot before bar i
          int obBar = -1;
          for(int k = i - 1; k >= 0; k--) {
@@ -232,7 +232,7 @@ int OnCalculate(const int rates_total,
       }
 
       if(bosAN >= 2) {
-         // Double BOS up confirmed on bar i
+         // Double BO up confirmed on bar i
          // Look BACK for last V level pivot before bar i
          int obBar = -1;
          for(int k = i - 1; k >= 0; k--) {
@@ -268,8 +268,8 @@ int OnCalculate(const int rates_total,
 //=============================================================================
 datetime ZoneEnd(const MqlRates &R[], int count, int bosBar,
                  double zHigh, double zLow, bool isSell, int barSecs) {
-   // Start scanning AFTER the BOS confirmation bar — not from the origin candle.
-   // The breakout bars between origin and BOS would falsely trigger a touch
+   // Start scanning AFTER the BO confirmation bar — not from the origin candle.
+   // The breakout bars between origin and BO would falsely trigger a touch
    // if we started from the origin. We want the RETURN to the zone.
    for(int k = bosBar + 1; k < count; k++) {
       // SELL zone: price returns upward and touches zone low from below
